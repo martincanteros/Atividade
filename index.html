@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Info31 — seu espaço de autoajuda</title>
+  <meta name="description" content="Lume é um chatbot de autoajuda para conversar sobre ansiedade, estresse, sono e bem-estar." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Fraunces:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Barra lateral -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <h1>Info31</h1>
+          <p>Um espaço seguro para você</p>
+        </div>
+      </div>
+
+      <div>
+        <p class="section-label">Como você está hoje?</p>
+        <div class="moods">
+          <button class="mood" data-mood="ótimo">😄<span>Ótimo</span></button>
+          <button class="mood" data-mood="bem">🙂<span>Bem</span></button>
+          <button class="mood" data-mood="neutro">😐<span>Neutro</span></button>
+          <button class="mood" data-mood="triste">😔<span>Triste</span></button>
+          <button class="mood" data-mood="ansioso">😣<span>Ansioso</span></button>
+        </div>
+      </div>
+
+      <div class="breath">
+        <p class="section-label">Pausa para respirar</p>
+        <div class="breath-circle" id="breathCircle">Pronto?</div>
+        <button id="breathBtn">Começar</button>
+      </div>
+    </aside>
+
+    <!-- Chat -->
+    <main class="chat">
+      <header class="chat-header">
+        <div class="header-left">
+          <button class="menu-btn" id="menuBtn" aria-label="Abrir menu">☰</button>
+          <div>
+            <h2>Converse com a Info31</h2>
+            <span class="status">Disponível para ouvir</span>
+          </div>
+        </div>
+        <button class="new-chat" id="newChat">Nova conversa</button>
+      </header>
+
+      <section class="messages" id="messages">
+        <div class="welcome" id="welcome">
+          <h3>Olá. Respire fundo,<br><em>você está aqui.</em></h3>
+          <p>Conte como está se sentindo. Sem julgamentos, no seu tempo.</p>
+        </div>
+      </section>
+
+      <footer class="composer">
+        <form id="form">
+          <textarea id="input" rows="1" placeholder="Escreva o que está sentindo..."></textarea>
+          <button class="send" id="send" type="submit" aria-label="Enviar" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <p class="disclaimer">A Info31 oferece apoio emocional e não substitui acompanhamento profissional.</p>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const messages = document.getElementById("messages");
+    const sendBtn = document.getElementById("send");
+
+    function appendMessage(role, text) {
+      const wrapper = document.createElement("div");
+      wrapper.className = `msg ${role}`;
+      wrapper.innerHTML = `
+        <div class="avatar"></div>
+        <div class="bubble">
+          ${text}
+          <span class="time">${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+        </div>
+      `;
+      messages.appendChild(wrapper);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addTyping() {
+      const typing = document.createElement("div");
+      typing.className = "msg bot typing";
+      typing.innerHTML = `
+        <div class="avatar"></div>
+        <div class="bubble">
+          <span></span><span></span><span></span>
+        </div>
+      `;
+      messages.appendChild(typing);
+      messages.scrollTop = messages.scrollHeight;
+      return typing;
+    }
+
+    function removeTyping(element) {
+      if (element) element.remove();
+    }
+
+    function toggleInput() {
+      sendBtn.disabled = input.value.trim() === "";
+    }
+
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 140) + "px";
+      toggleInput();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const texto = input.value.trim();
+      if (!texto) return;
+
+      const welcome = document.getElementById("welcome");
+      if (welcome) welcome.remove();
+
+      appendMessage("user", texto.replace(/\n/g, "<br>"));
+
+      input.value = "";
+      input.style.height = "auto";
+      toggleInput();
+
+      const typing = addTyping();
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ mensagem: texto })
+        });
+
+        const data = await response.json();
+        removeTyping(typing);
+
+        appendMessage("bot", (data.resposta || "Não consegui responder agora.").replace(/\n/g, "<br>"));
+      } catch (error) {
+        removeTyping(typing);
+        appendMessage("bot", "Não consegui me conectar no momento. Tente novamente.");
+        console.error(error);
+      }
+    });
+
+    document.querySelectorAll(".mood").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".mood").forEach((btn) => btn.classList.remove("active"));
+        button.classList.add("active");
+
+        const mood = button.dataset.mood;
+
+        if (input.value.trim() === "") {
+          input.value = `Hoje estou me sentindo ${mood}.`;
+          toggleInput();
+        }
+      });
+    });
+
+    document.getElementById("newChat")?.addEventListener("click", () => {
+      messages.innerHTML = `
+        <div class="welcome" id="welcome">
+          <h3>Olá. Respire fundo,<br><em>você está aqui.</em></h3>
+          <p>Conte como está se sentindo. Sem julgamentos, no seu tempo.</p>
+        </div>
+      `;
+    });
+
+    toggleInput();
+  </script>
+</body>
+</html>
