@@ -5,7 +5,7 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const AI_API_KEY = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
-const AI_BASE_URL = process.env.AI_BASE_URL || "https://openrouter.ai/api/v1/chat/completions";
+const AI_BASE_URL = process.env.AI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AI_API_KEY}";
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname)));
@@ -37,9 +37,9 @@ app.post("/api/chat", async (req, res) => {
         "X-Title": "Info31"
       },
       body: JSON.stringify({
-        model: "google/gemma-2-27b-it:free",
+        model: "gemini-2.5-flash",
         temperature: 0.8,
-        messages: [
+        systemInstruction: [
           {
             role: "system",
             content: "Você é a Info31, uma assistente emocional acolhedora e cuidadosa. Responda em português do Brasil, com empatia, sem diagnóstico, sem substituir profissionais. Responda de forma breve, clara e acolhedora."
